@@ -2,8 +2,8 @@ package contentserver
 
 import "fmt"
 
-const thumbnailUrlPattern = "/content/%v/screen.jpg"
-const videoUrlPattern = "/content/%v/index.mp4"
+const thumbnailUrlPattern = "/content/%s/screen.jpg"
+const videoUrlPattern = "/content/%s/index.mp4"
 
 
 func GetThumbnailUrl(id string) string {
