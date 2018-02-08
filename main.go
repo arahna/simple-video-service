@@ -10,18 +10,20 @@ import (
 	"syscall"
 )
 
+const logFileName = "my.log"
+
 func main() {
 	log.SetFormatter(&log.JSONFormatter{})
-	file, err := os.OpenFile("my.log", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
+	file, err := os.OpenFile(logFileName, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
 	if err == nil {
 		log.SetOutput(file)
 	}
-	defer file.Close()
 
 	killSignalChan := getKillSignalChan()
 	srv := startServer(":8000")
 
 	waitForKillSignal(killSignalChan)
+
 	srv.Shutdown(context.Background())
 }
 

@@ -3,35 +3,46 @@ package handlers
 import (
 	"net/http"
 	"encoding/json"
-	"io"
-	"github.com/sirupsen/logrus"
+	"github.com/gorilla/mux"
+	"github.com/arahna/simple-video-service/videodb"
+	"github.com/arahna/simple-video-service/contentserver"
 )
 
-type Video struct {
-	VideoListItem
+type videoItem struct {
+	videoListItem
 	Url string `json:"url"`
 }
 
-func video(w http.ResponseWriter, _ *http.Request) {
-	item := Video{
-		VideoListItem{
-			"d290f1ee-6c54-4b01-90e6-d701748f0851",
-			"Black Retrospetive Woman",
-			15,
-			"/content/d290f1ee-6c54-4b01-90e6-d701748f0851/screen.jpg",
-		},
-		"/content/d290f1ee-6c54-4b01-90e6-d701748f0851/index.mp4",
-	}
-	b, err := json.Marshal(item)
+func video(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id, ok := vars["ID"]
 
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	if !ok || id == "" {
+		http.Error(w, "Invalid parameter value", http.StatusBadRequest)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-	w.WriteHeader(http.StatusOK)
-	if _, err := io.WriteString(w, string(b)); err != nil {
-		logrus.WithField("err", err).Error("write response error")
+	video, found := videodb.Find(id)
+
+	if !found {
+		http.Error(w, "Video not found", http.StatusNotFound)
+		return
+	}
+
+	item := toVideoItem(video)
+	jsonResponse, err2 := json.Marshal(item)
+
+	if err2 != nil {
+		http.Error(w, err2.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	writeJsonResponse(w, jsonResponse)
+}
+
+func toVideoItem(video videodb.Video) videoItem {
+	return videoItem{
+		toVideoListItem(video),
+		contentserver.GetVideoUrl(video.Id),
 	}
 }

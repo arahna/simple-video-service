@@ -3,11 +3,11 @@ package handlers
 import (
 	"net/http"
 	"encoding/json"
-	"io"
-	"github.com/sirupsen/logrus"
+	"github.com/arahna/simple-video-service/videodb"
+	"github.com/arahna/simple-video-service/contentserver"
 )
 
-type VideoListItem struct {
+type videoListItem struct {
 	Id        string `json:"id"`
 	Name      string `json:"name"`
 	Duration  int    `json:"duration"`
@@ -15,24 +15,26 @@ type VideoListItem struct {
 }
 
 func list(w http.ResponseWriter, _ *http.Request) {
-	item := VideoListItem{
-		"d290f1ee-6c54-4b01-90e6-d701748f0851",
-		"Black Retrospetive Woman",
-		15,
-		"/content/d290f1ee-6c54-4b01-90e6-d701748f0851/screen.jpg",
+	videos := videodb.GetAll()
+	var items []videoListItem
+	for _, video := range videos {
+		items = append(items, toVideoListItem(video))
 	}
-	items := []VideoListItem{item}
-	b, err := json.Marshal(items)
+	jsonResponse, err := json.Marshal(items)
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-	w.WriteHeader(http.StatusOK)
+	writeJsonResponse(w, jsonResponse)
+}
 
-	if _, err := io.WriteString(w, string(b)); err != nil {
-		logrus.WithField("err", err).Error("write response error")
+func toVideoListItem(video videodb.Video) videoListItem {
+	return videoListItem{
+		video.Id,
+		video.Name,
+		video.Duration,
+		contentserver.GetThumbnailUrl(video.Id),
 	}
 }
