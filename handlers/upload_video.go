@@ -2,16 +2,20 @@ package handlers
 
 import (
 	"net/http"
-	"io"
-	"os"
-	log "github.com/sirupsen/logrus"
+	"github.com/arahna/simple-video-service/model"
+	"github.com/arahna/simple-video-service/contentserver"
 )
 
 func uploadVideo(w http.ResponseWriter, r *http.Request) {
-	fileReader, header, err := r.FormFile("file[]")
+	db := getDatabase(r)
+	if db == nil {
+		writeInternalServerError(w, nil, "Failed to get database connection")
+		return
+	}
 
+	fileReader, header, err := r.FormFile("file[]")
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Invalid parameters", http.StatusBadRequest)
 		return
 	}
 
@@ -21,20 +25,29 @@ func uploadVideo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	file, err := os.OpenFile(header.Filename, os.O_CREATE|os.O_WRONLY, 0666)
+	duration := uint(32) // TODO
+	fileName := header.Filename // TODO: clean file name
+	video := model.NewVideo(header.Filename, fileName, duration, model.Uploading)
+
+	repository := model.NewVideoRepository(db)
+	if err := repository.Save(video); err != nil {
+		writeInternalServerError(w, err, "Failed to save file to DB")
+		return
+	}
+
+	err = contentserver.SaveFile(fileReader, video.Uid, video.FileName)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		video.Status = model.Error
+		repository.Save(video)
+		writeInternalServerError(w, err, "Failed to save file to content server")
 		return
 	}
 
-	if _, err = io.Copy(file, fileReader); err != nil {
-		log.WithField("err", err).Error("Failed to save file")
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	video.Status = model.Ready
+	if err := repository.Save(video); err != nil {
+		writeInternalServerError(w, err, "Failed to update file status")
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	if _, err := io.WriteString(w, "The video uploaded"); err != nil {
-		log.WithField("err", err).Error("write response error")
-	}
+	writeSuccessResponse(w, "The video uploaded")
 }

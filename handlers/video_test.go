@@ -8,14 +8,22 @@ import (
 	"encoding/json"
 	"context"
 	"fmt"
+	"github.com/arahna/simple-video-service/database"
 )
 
 func TestVideo(t *testing.T) {
-	r, err := getRequest("sldjfl34-dfgj-523k-jk34-5jk3j45klj34")
+	id := "sldjfl34-dfgj-523k-jk34-5jk3j45klj34"
+	r, err := getRequest(id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	db, err := database.InitDatabase()
 	if err != nil {
 		t.Fatal(err)
 	}
 	w := httptest.NewRecorder()
+	r = r.WithContext(context.WithValue(r.Context(), "ID", id))
+	r = r.WithContext(context.WithValue(r.Context(), "db", db))
 	video(w, r)
 	response := w.Result()
 
@@ -34,11 +42,18 @@ func TestVideo(t *testing.T) {
 }
 
 func TestVideoNotFound(t *testing.T) {
-	r, err := getRequest("non-existent-video")
+	id := "non-existent-video"
+	r, err := getRequest(id)
 	if err != nil {
 		t.Fatal(err)
 	}
-	r.WithContext(context.WithValue(r.Context(), "ID", "non-existent-video"))
+	db, err := database.InitDatabase()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	r = r.WithContext(context.WithValue(r.Context(), "ID", id))
+	r = r.WithContext(context.WithValue(r.Context(), "db", db))
 
 	w := httptest.NewRecorder()
 
@@ -60,6 +75,6 @@ func getRequest(id string) (*http.Request, error) {
 	if err != nil {
 		return nil, err
 	}
-	r.WithContext(context.WithValue(r.Context(), "ID", id))
+	r = r.WithContext(context.WithValue(r.Context(), "ID", id))
 	return r, nil
 }

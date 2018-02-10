@@ -2,39 +2,41 @@ package handlers
 
 import (
 	"net/http"
-	"encoding/json"
-	"github.com/arahna/simple-video-service/videodb"
+	"github.com/arahna/simple-video-service/model"
 	"github.com/arahna/simple-video-service/contentserver"
 )
 
 type videoListItem struct {
 	Id        string `json:"id"`
 	Name      string `json:"name"`
-	Duration  int    `json:"duration"`
+	Duration  uint   `json:"duration"`
 	Thumbnail string `json:"thumbnail"`
 }
 
-func list(w http.ResponseWriter, _ *http.Request) {
-	videos := videodb.GetAll()
-	var items []videoListItem
-	for _, video := range videos {
-		items = append(items, toVideoListItem(video))
-	}
-	jsonResponse, err := json.Marshal(items)
-
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+func list(w http.ResponseWriter, r *http.Request) {
+	db := getDatabase(r)
+	if db == nil {
+		writeInternalServerError(w, nil, "")
 		return
 	}
-
-	writeJsonResponse(w, jsonResponse)
+	repository := model.NewVideoRepository(db)
+	videos, err := repository.GetReady()
+	if err != nil {
+		writeInternalServerError(w, err, "Failed to get video list")
+		return
+	}
+	items := make([]videoListItem, len(videos))
+	for i, video := range videos {
+		items[i] = toVideoListItem(video)
+	}
+	writeJsonResponse(w, items)
 }
 
-func toVideoListItem(video videodb.Video) videoListItem {
+func toVideoListItem(video model.Video) videoListItem {
 	return videoListItem{
-		video.Id,
-		video.Name,
+		video.Uid,
+		video.Title,
 		video.Duration,
-		contentserver.GetThumbnailUrl(video.Id),
+		contentserver.GetThumbnailUrl(video.Uid),
 	}
 }

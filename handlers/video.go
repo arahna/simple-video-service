@@ -2,10 +2,9 @@ package handlers
 
 import (
 	"net/http"
-	"encoding/json"
 	"github.com/gorilla/mux"
-	"github.com/arahna/simple-video-service/videodb"
 	"github.com/arahna/simple-video-service/contentserver"
+	"github.com/arahna/simple-video-service/model"
 )
 
 type videoItem struct {
@@ -14,6 +13,12 @@ type videoItem struct {
 }
 
 func video(w http.ResponseWriter, r *http.Request) {
+	db := getDatabase(r)
+	if db == nil {
+		writeInternalServerError(w, nil, "")
+		return
+	}
+
 	vars := mux.Vars(r)
 	id, ok := vars["ID"]
 
@@ -22,27 +27,25 @@ func video(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	video, found := videodb.Find(id)
+	repository := model.NewVideoRepository(db)
+	video, err := repository.Find(id)
+	if err != nil {
+		writeInternalServerError(w, err, "Failed to find video")
+		return
+	}
 
-	if !found {
+	if video == nil {
 		http.Error(w, "Video not found", http.StatusNotFound)
 		return
 	}
 
-	item := toVideoItem(video)
-	jsonResponse, err2 := json.Marshal(item)
-
-	if err2 != nil {
-		http.Error(w, err2.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	writeJsonResponse(w, jsonResponse)
+	item := toVideoItem(*video)
+	writeJsonResponse(w, item)
 }
 
-func toVideoItem(video videodb.Video) videoItem {
+func toVideoItem(video model.Video) videoItem {
 	return videoItem{
 		toVideoListItem(video),
-		contentserver.GetVideoUrl(video.Id),
+		contentserver.GetVideoUrl(video.Uid, video.FileName),
 	}
 }
