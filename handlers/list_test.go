@@ -9,8 +9,14 @@ import (
 )
 
 func TestList(t *testing.T) {
+	db := initDB()
+	defer db.Close()
+	r, err := http.NewRequest("GET", "/api/v1/list", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	w := httptest.NewRecorder()
- 	list(w, nil)
+	Router(db).ServeHTTP(w, r)
  	response := w.Result()
 
  	if response.StatusCode != http.StatusOK {

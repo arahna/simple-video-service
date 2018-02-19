@@ -6,25 +6,21 @@ import (
 	"net/http"
 	"io/ioutil"
 	"encoding/json"
-	"context"
 	"fmt"
 	"github.com/arahna/simple-video-service/database"
+	"log"
+	"database/sql"
 )
 
 func TestVideo(t *testing.T) {
-	id := "sldjfl34-dfgj-523k-jk34-5jk3j45klj34"
-	r, err := getRequest(id)
-	if err != nil {
-		t.Fatal(err)
-	}
-	db, err := database.InitDatabase()
+	db := initDB()
+	defer db.Close()
+	r, err := getRequest("sldjfl34-dfgj-523k-jk34-5jk3j45klj34")
 	if err != nil {
 		t.Fatal(err)
 	}
 	w := httptest.NewRecorder()
-	r = r.WithContext(context.WithValue(r.Context(), "ID", id))
-	r = r.WithContext(context.WithValue(r.Context(), "db", db))
-	video(w, r)
+	Router(db).ServeHTTP(w, r)
 	response := w.Result()
 
 	testStatusCode(response.StatusCode, http.StatusOK, t)
@@ -42,22 +38,14 @@ func TestVideo(t *testing.T) {
 }
 
 func TestVideoNotFound(t *testing.T) {
-	id := "non-existent-video"
-	r, err := getRequest(id)
+	db := initDB()
+	defer db.Close()
+	r, err := getRequest("non-existent-video")
 	if err != nil {
 		t.Fatal(err)
 	}
-	db, err := database.InitDatabase()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	r = r.WithContext(context.WithValue(r.Context(), "ID", id))
-	r = r.WithContext(context.WithValue(r.Context(), "db", db))
-
 	w := httptest.NewRecorder()
-
-	video(w, r)
+	Router(db).ServeHTTP(w, r)
 	response := w.Result()
 
 	testStatusCode(response.StatusCode, http.StatusNotFound, t)
@@ -75,6 +63,14 @@ func getRequest(id string) (*http.Request, error) {
 	if err != nil {
 		return nil, err
 	}
-	r = r.WithContext(context.WithValue(r.Context(), "ID", id))
 	return r, nil
+}
+
+func initDB() *sql.DB {
+	db, err := database.InitDatabase()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return db
 }
