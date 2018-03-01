@@ -27,7 +27,7 @@ func uploadVideo(w http.ResponseWriter, r *http.Request) {
 
 	duration := uint(32) // TODO
 	fileName := header.Filename // TODO: clean file name
-	video := model.NewVideo(header.Filename, fileName, duration, model.Uploading)
+	video := model.NewVideo(header.Filename, fileName, duration, model.Created)
 
 	repository := model.NewVideoRepository(db)
 	if err := repository.Save(video); err != nil {

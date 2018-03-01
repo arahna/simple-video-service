@@ -7,9 +7,11 @@ import (
 type VideoStatus uint8
 
 const (
-	Error     VideoStatus = 1 + iota
-	Uploading
+	Created VideoStatus = 1 + iota
+	Processing
 	Ready
+	Deleted
+	Error
 )
 
 type Video struct {

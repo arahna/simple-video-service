@@ -18,6 +18,7 @@ func Router(db *sql.DB) http.Handler {
 	s.HandleFunc("/list", list).Methods(http.MethodGet)
 	s.HandleFunc("/video/{ID}", video).Methods(http.MethodGet)
 	s.HandleFunc("/video", uploadVideo).Methods(http.MethodPost)
+	s.HandleFunc("/video/{ID}/status", status).Methods(http.MethodGet)
 
 	return dbMiddleware(logMiddleware(r), db)
 }

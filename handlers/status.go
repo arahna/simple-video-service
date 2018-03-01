@@ -3,16 +3,14 @@ package handlers
 import (
 	"net/http"
 	"github.com/gorilla/mux"
-	"github.com/arahna/simple-video-service/contentserver"
 	"github.com/arahna/simple-video-service/model"
 )
 
-type videoItem struct {
-	videoListItem
-	Url string `json:"url"`
+type statusResponse struct {
+	Status model.VideoStatus `json:"status"`
 }
 
-func video(w http.ResponseWriter, r *http.Request) {
+func status(w http.ResponseWriter, r *http.Request) {
 	db := getDatabase(r)
 	if db == nil {
 		writeInternalServerError(w, nil, "")
@@ -30,7 +28,7 @@ func video(w http.ResponseWriter, r *http.Request) {
 	repository := model.NewVideoRepository(db)
 	video, err := repository.Find(id)
 	if err != nil {
-		writeInternalServerError(w, err, "Failed to find video")
+		writeInternalServerError(w, err, "Failed to find the video")
 		return
 	}
 
@@ -39,13 +37,6 @@ func video(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	item := toVideoItem(*video)
-	writeJsonResponse(w, item)
-}
-
-func toVideoItem(video model.Video) videoItem {
-	return videoItem{
-		toVideoListItem(video),
-		contentserver.GetVideoUrl(video.Uid, video.FileName),
-	}
+	response := statusResponse{Status: video.Status}
+	writeJsonResponse(w, response)
 }
