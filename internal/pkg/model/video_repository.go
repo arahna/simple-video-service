@@ -2,6 +2,7 @@ package model
 
 import (
 	"database/sql"
+	"fmt"
 )
 
 type videoRepository struct {
@@ -10,7 +11,7 @@ type videoRepository struct {
 
 type VideoRepository interface {
 	Find(uid string) (*Video, error)
-	FindWithStatus(status VideoStatus) ([]*Video, error)
+	FindWithStatus(status VideoStatus, search string, offset, limit int) ([]*Video, error)
 	FindOneWithStatus(status VideoStatus) (*Video, error)
 	Save(v *Video) error
 }
@@ -19,14 +20,25 @@ func NewVideoRepository(db *sql.DB) VideoRepository {
 	return &videoRepository{db}
 }
 
-func (r *videoRepository) FindWithStatus(status VideoStatus) ([]*Video, error) {
+func (r *videoRepository) FindWithStatus(status VideoStatus, search string, offset, limit int) ([]*Video, error) {
+	params := []interface{}{status}
 	q := `SELECT
 			id, uid, title, status, duration, file_name 
 		  FROM
 		  	video 
 		  WHERE
 		  	status = ?`
-	rows, err := r.DB.Query(q, status)
+	if search != `` {
+		q = q + ` AND name LIKE %?%`
+		params = append(params, search)
+	}
+	if limit > 0 {
+		q = fmt.Sprintf(`%s LIMIT %d`, q, limit)
+	}
+	if offset > 0 {
+		q = fmt.Sprintf(`%s OFFSET %d`, q, offset)
+	}
+	rows, err := r.DB.Query(q, params...)
 	if err != nil {
 		return nil, err
 	}

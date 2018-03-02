@@ -9,18 +9,20 @@ import (
 	"github.com/arahna/simple-video-service/internal/app/server/handlers"
 	"github.com/arahna/simple-video-service/internal/pkg/database"
 	"github.com/arahna/simple-video-service/internal/pkg/killsignal"
+	"github.com/arahna/simple-video-service/configs"
+	"path/filepath"
 )
 
-const logFileName = "log/server.log"
+const logFileName = "server.log"
 
 func main() {
 	log.SetFormatter(&log.JSONFormatter{})
-	file, err := os.OpenFile(logFileName, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
+	file, err := os.OpenFile(filepath.Join(configs.LogDir, logFileName), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
 	if err == nil {
 		log.SetOutput(file)
 	}
 
-	db, err := database.InitDatabase()
+	db, err := database.InitDatabase(configs.DatabaseSourceName)
 	if err != nil {
 		log.Fatal(err)
 	}

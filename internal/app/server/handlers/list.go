@@ -4,7 +4,13 @@ import (
 	"net/http"
 	"github.com/arahna/simple-video-service/internal/pkg/model"
 	"github.com/arahna/simple-video-service/internal/pkg/contentserver"
+	"strconv"
+	"strings"
 )
+
+const searchParam = "searchString"
+const skipParam = "skip"
+const limitParam = "limit"
 
 type videoListItem struct {
 	Id        string `json:"id"`
@@ -19,8 +25,20 @@ func list(w http.ResponseWriter, r *http.Request) {
 		writeInternalServerError(w, nil, "")
 		return
 	}
+
+	q := r.URL.Query()
+	search := strings.TrimSpace(q.Get(searchParam))
+	skip, err := strconv.Atoi(q.Get(skipParam))
+	if err != nil {
+		skip = 0
+	}
+	limit, err := strconv.Atoi(q.Get(limitParam))
+	if err != nil {
+		limit = 0
+	}
+
 	repository := model.NewVideoRepository(db)
-	videos, err := repository.FindWithStatus(model.VideoReady)
+	videos, err := repository.FindWithStatus(model.VideoReady, search, skip, limit)
 	if err != nil {
 		writeInternalServerError(w, err, "Failed to get video list")
 		return

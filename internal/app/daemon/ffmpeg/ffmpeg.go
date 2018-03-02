@@ -25,10 +25,9 @@ func (ffmpeg *ffmpeg) Duration(videoPath string) (float64, error) {
 }
 
 func (ffmpeg *ffmpeg) CreateVideoThumbnail(videoPath string, thumbPath string, thumbSecondsOffset uint64) error {
-	return exec.Command(`ffmpeg`, `-i`, videoPath, `-ss`, ffmpegTimeFromSeconds(thumbSecondsOffset), `-vframes`, `1`, thumbPath).Run()
+	return exec.Command(`ffmpeg`, `-i`, videoPath, `-ss`, timeFromSeconds(thumbSecondsOffset), `-vframes`, `1`, thumbPath).Run()
 }
 
-func ffmpegTimeFromSeconds(seconds uint64) string {
+func timeFromSeconds(seconds uint64) string {
 	return time.Unix(int64(seconds), 0).UTC().Format(`15:04:05.000000`)
 }
-
