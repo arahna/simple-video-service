@@ -23,13 +23,13 @@ type Video struct {
 	Duration uint
 }
 
-func NewVideo(title, fileName string, duration uint, status VideoStatus) *Video {
+func NewVideo(title, fileName string, status VideoStatus) *Video {
 	uid := uuid.New()
 	return &Video{
 		Uid:      uid.String(),
 		Title:    title,
 		FileName: fileName,
-		Duration: duration,
+		Duration: 0,
 		Status:   status,
 	}
 }

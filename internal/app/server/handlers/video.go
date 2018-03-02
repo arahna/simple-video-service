@@ -39,11 +39,11 @@ func video(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	item := toVideoItem(*video)
+	item := toVideoItem(video)
 	writeJsonResponse(w, item)
 }
 
-func toVideoItem(video model.Video) videoItem {
+func toVideoItem(video *model.Video) videoItem {
 	return videoItem{
 		toVideoListItem(video),
 		contentserver.GetVideoUrl(video.Uid, video.FileName),

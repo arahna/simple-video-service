@@ -7,17 +7,26 @@ import (
 	"io"
 )
 
-const thumbnailUrlPattern = "/content/%s/screen.jpg"
+const thumbnailUrlPattern = "/content/%s/%s"
 const videoUrlPattern = "/content/%s/%s"
-const dirPath = "content"
+const dirPath = "web/content"
+const thumbnailFileName = "screen.jpg"
 
 
 func GetThumbnailUrl(uid string) string {
-	return fmt.Sprintf(thumbnailUrlPattern, uid)
+	return fmt.Sprintf(thumbnailUrlPattern, uid, thumbnailFileName)
+}
+
+func GetThumbnailPath(uid string) string {
+	return filepath.Join(dirPath, uid, thumbnailFileName)
 }
 
 func GetVideoUrl(uid, fileName string) string {
 	return fmt.Sprintf(videoUrlPattern, uid, fileName)
+}
+
+func GetVideoPath(uid, fileName string) string {
+	return filepath.Join(dirPath, uid, fileName)
 }
 
 func SaveFile(src io.Reader, uid, fileName string) error {

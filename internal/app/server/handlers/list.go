@@ -20,7 +20,7 @@ func list(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	repository := model.NewVideoRepository(db)
-	videos, err := repository.GetReady()
+	videos, err := repository.FindWithStatus(model.VideoReady)
 	if err != nil {
 		writeInternalServerError(w, err, "Failed to get video list")
 		return
@@ -32,7 +32,7 @@ func list(w http.ResponseWriter, r *http.Request) {
 	writeJsonResponse(w, items)
 }
 
-func toVideoListItem(video model.Video) videoListItem {
+func toVideoListItem(video *model.Video) videoListItem {
 	return videoListItem{
 		video.Uid,
 		video.Title,

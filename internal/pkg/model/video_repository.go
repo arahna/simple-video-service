@@ -9,8 +9,9 @@ type videoRepository struct {
 }
 
 type VideoRepository interface {
-	GetReady() ([]Video, error)
 	Find(uid string) (*Video, error)
+	FindWithStatus(status VideoStatus) ([]*Video, error)
+	FindOneWithStatus(status VideoStatus) (*Video, error)
 	Save(v *Video) error
 }
 
@@ -18,23 +19,52 @@ func NewVideoRepository(db *sql.DB) VideoRepository {
 	return &videoRepository{db}
 }
 
-func (r *videoRepository) GetReady() ([]Video, error) {
-	q := `SELECT id, uid, title, status, duration, file_name FROM video WHERE status = ?`
-	rows, err := r.DB.Query(q, VideoReady)
+func (r *videoRepository) FindWithStatus(status VideoStatus) ([]*Video, error) {
+	q := `SELECT
+			id, uid, title, status, duration, file_name 
+		  FROM
+		  	video 
+		  WHERE
+		  	status = ?`
+	rows, err := r.DB.Query(q, status)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var videos []Video
+	var videos []*Video
 	for rows.Next() {
 		video, err := r.scanVideo(rows)
 		if err != nil {
 			return nil, err
 		}
-		videos = append(videos, *video)
+		videos = append(videos, video)
 	}
 	return videos, nil
+}
+
+func (r *videoRepository) FindOneWithStatus(status VideoStatus) (*Video, error) {
+	q := `SELECT
+			id, uid, title, status, duration, file_name 
+		  FROM
+		  	video 
+		  WHERE
+		  	status = ?
+		  LIMIT 1`
+	rows, err := r.DB.Query(q, status)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	if !rows.Next() {
+		return nil, nil
+	}
+	video, err := r.scanVideo(rows)
+	if err != nil {
+		return nil, err
+	}
+	return video, nil
 }
 
 func (r *videoRepository) Find(uid string) (*Video, error) {

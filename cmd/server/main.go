@@ -2,17 +2,16 @@ package main
 
 import (
 	"net/http"
-	"github.com/arahna/simple-video-service/internal/app/server/handlers"
-	"github.com/arahna/simple-video-service/internal/pkg/database"
 	log "github.com/sirupsen/logrus"
 	"os"
 	"context"
-	"os/signal"
-	"syscall"
 	"database/sql"
+	"github.com/arahna/simple-video-service/internal/app/server/handlers"
+	"github.com/arahna/simple-video-service/internal/pkg/database"
+	"github.com/arahna/simple-video-service/internal/pkg/killsignal"
 )
 
-const logFileName = "log/my.log"
+const logFileName = "log/server.log"
 
 func main() {
 	log.SetFormatter(&log.JSONFormatter{})
@@ -27,11 +26,9 @@ func main() {
 	}
 	defer db.Close()
 
-	killSignalChan := getKillSignalChan()
+	kc := killsignal.NewChan()
 	srv := startServer(":8000", db)
-
-	waitForKillSignal(killSignalChan)
-
+	killsignal.Wait(kc)
 	srv.Shutdown(context.Background())
 }
 
@@ -46,21 +43,4 @@ func startServer(serverUrl string, db *sql.DB) *http.Server {
 	}()
 
 	return srv
-}
-
-func getKillSignalChan() chan os.Signal {
-	osKillSignalChan := make(chan os.Signal, 1)
-	signal.Notify(osKillSignalChan, os.Kill, os.Interrupt, syscall.SIGTERM)
-	return osKillSignalChan
-}
-
-func waitForKillSignal(killSignalChan <- chan os.Signal) {
-	killSignal := <- killSignalChan
-
-	switch killSignal {
-	case os.Interrupt:
-		log.Info("got SIGINT...")
-	case syscall.SIGTERM:
-		log.Info("got SIGTERM...")
-	}
 }

@@ -25,15 +25,9 @@ func uploadVideo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	duration := uint(32) // TODO
 	fileName := header.Filename // TODO: clean file name
-	video := model.NewVideo(header.Filename, fileName, duration, model.VideoCreated)
-
+	video := model.NewVideo(header.Filename, fileName, model.VideoCreated)
 	repository := model.NewVideoRepository(db)
-	if err := repository.Save(video); err != nil {
-		writeInternalServerError(w, err, "Failed to save file to DB")
-		return
-	}
 
 	err = contentserver.SaveFile(fileReader, video.Uid, video.FileName)
 	if err != nil {
@@ -43,9 +37,8 @@ func uploadVideo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	video.Status = model.VideoReady
 	if err := repository.Save(video); err != nil {
-		writeInternalServerError(w, err, "Failed to update file status")
+		writeInternalServerError(w, err, "Failed to save file to DB")
 		return
 	}
 
