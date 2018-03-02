@@ -9,14 +9,14 @@ import (
 )
 
 func TestList(t *testing.T) {
-	db := initDB()
-	defer db.Close()
+	repo, cleanup := newVideoRepository()
+	defer cleanup()
 	r, err := http.NewRequest("GET", "/api/v1/list", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	w := httptest.NewRecorder()
-	Router(db).ServeHTTP(w, r)
+	Router(repo).ServeHTTP(w, r)
  	response := w.Result()
 
  	if response.StatusCode != http.StatusOK {

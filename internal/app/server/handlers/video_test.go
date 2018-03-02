@@ -9,18 +9,19 @@ import (
 	"fmt"
 	"github.com/arahna/simple-video-service/internal/pkg/database"
 	"log"
-	"database/sql"
+	"github.com/arahna/simple-video-service/internal/pkg/model"
+	"github.com/arahna/simple-video-service/configs"
 )
 
 func TestVideo(t *testing.T) {
-	db := initDB()
-	defer db.Close()
+	repo, cleanup := newVideoRepository()
+	defer cleanup()
 	r, err := getRequest("sldjfl34-dfgj-523k-jk34-5jk3j45klj34")
 	if err != nil {
 		t.Fatal(err)
 	}
 	w := httptest.NewRecorder()
-	Router(db).ServeHTTP(w, r)
+	Router(repo).ServeHTTP(w, r)
 	response := w.Result()
 
 	testStatusCode(response.StatusCode, http.StatusOK, t)
@@ -38,14 +39,14 @@ func TestVideo(t *testing.T) {
 }
 
 func TestVideoNotFound(t *testing.T) {
-	db := initDB()
-	defer db.Close()
+	repo, cleanup := newVideoRepository()
+	defer cleanup()
 	r, err := getRequest("non-existent-video")
 	if err != nil {
 		t.Fatal(err)
 	}
 	w := httptest.NewRecorder()
-	Router(db).ServeHTTP(w, r)
+	Router(repo).ServeHTTP(w, r)
 	response := w.Result()
 
 	testStatusCode(response.StatusCode, http.StatusNotFound, t)
@@ -66,11 +67,13 @@ func getRequest(id string) (*http.Request, error) {
 	return r, nil
 }
 
-func initDB() *sql.DB {
-	db, err := database.InitDatabase()
+// TODO: mock VideoRepository
+func newVideoRepository() (model.VideoRepository, func()) {
+	db, err := database.InitDatabase(configs.DatabaseSourceName)
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	return db
+	return model.NewVideoRepository(db), func() {
+		db.Close()
+	}
 }

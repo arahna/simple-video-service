@@ -5,28 +5,19 @@ import (
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
 	"io"
-	"database/sql"
-	"context"
 	"encoding/json"
+	"github.com/arahna/simple-video-service/internal/pkg/model"
 )
 
-const contextDbKey = "db"
-
-func Router(db *sql.DB) http.Handler {
+func Router(repo model.VideoRepository) http.Handler {
 	r := mux.NewRouter()
 	s := r.PathPrefix("/api/v1").Subrouter()
-	s.HandleFunc("/list", list).Methods(http.MethodGet)
-	s.HandleFunc("/video/{ID}", video).Methods(http.MethodGet)
-	s.HandleFunc("/video", uploadVideo).Methods(http.MethodPost)
-	s.HandleFunc("/video/{ID}/status", status).Methods(http.MethodGet)
+	s.HandleFunc("/list", list(repo)).Methods(http.MethodGet)
+	s.HandleFunc("/video/{ID}", video(repo)).Methods(http.MethodGet)
+	s.HandleFunc("/video", uploadVideo(repo)).Methods(http.MethodPost)
+	s.HandleFunc("/video/{ID}/status", status(repo)).Methods(http.MethodGet)
 
-	return dbMiddleware(logMiddleware(r), db)
-}
-
-func dbMiddleware(h http.Handler, db *sql.DB) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		h.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), contextDbKey, db)))
-	})
+	return logMiddleware(r)
 }
 
 func logMiddleware(h http.Handler) http.Handler {
@@ -72,13 +63,4 @@ func writeInternalServerError(w http.ResponseWriter, err error, message string) 
 	} else if message != "" {
 		log.Error(message)
 	}
-}
-
-func getDatabase(r *http.Request) *sql.DB {
-	db, ok := r.Context().Value(contextDbKey).(*sql.DB)
-	if !ok {
-		log.WithField("context", r.Context()).Error("Can't get database from context")
-		return nil
-	}
-	return db
 }

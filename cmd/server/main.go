@@ -5,12 +5,12 @@ import (
 	log "github.com/sirupsen/logrus"
 	"os"
 	"context"
-	"database/sql"
+	"path/filepath"
 	"github.com/arahna/simple-video-service/internal/app/server/handlers"
 	"github.com/arahna/simple-video-service/internal/pkg/database"
 	"github.com/arahna/simple-video-service/internal/pkg/killsignal"
 	"github.com/arahna/simple-video-service/configs"
-	"path/filepath"
+	"github.com/arahna/simple-video-service/internal/pkg/model"
 )
 
 const logFileName = "server.log"
@@ -27,17 +27,18 @@ func main() {
 		log.Fatal(err)
 	}
 	defer db.Close()
+	repo := model.NewVideoRepository(db)
 
 	kc := killsignal.NewChan()
-	srv := startServer(":8000", db)
+	srv := startServer(":8000", repo)
 	killsignal.Wait(kc)
 	srv.Shutdown(context.Background())
 }
 
-func startServer(serverUrl string, db *sql.DB) *http.Server {
+func startServer(serverUrl string, repo model.VideoRepository) *http.Server {
 	log.WithFields(log.Fields{"url": serverUrl}).Info("starting the server")
 
-	router := handlers.Router(db)
+	router := handlers.Router(repo)
 	srv := &http.Server{Addr: serverUrl, Handler: router}
 
 	go func() {

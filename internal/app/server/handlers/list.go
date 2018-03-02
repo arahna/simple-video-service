@@ -19,37 +19,31 @@ type videoListItem struct {
 	Thumbnail string `json:"thumbnail"`
 }
 
-func list(w http.ResponseWriter, r *http.Request) {
-	db := getDatabase(r)
-	if db == nil {
-		writeInternalServerError(w, nil, "")
-		return
-	}
+func list(repository model.VideoRepository) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		q := r.URL.Query()
+		search := strings.TrimSpace(q.Get(searchParam))
+		skip, err := strconv.Atoi(q.Get(skipParam))
+		if err != nil {
+			skip = 0
+		}
+		limit, err := strconv.Atoi(q.Get(limitParam))
+		if err != nil {
+			limit = 0
+		}
 
-	q := r.URL.Query()
-	search := strings.TrimSpace(q.Get(searchParam))
-	skip, err := strconv.Atoi(q.Get(skipParam))
-	if err != nil {
-		skip = 0
+		videos, err := repository.FindWithStatus(model.VideoReady, search, skip, limit)
+		if err != nil {
+			writeInternalServerError(w, err, "Failed to get video list")
+			return
+		}
+		items := make([]videoListItem, len(videos))
+		for i, video := range videos {
+			items[i] = toVideoListItem(video)
+		}
+		writeJsonResponse(w, items)
 	}
-	limit, err := strconv.Atoi(q.Get(limitParam))
-	if err != nil {
-		limit = 0
-	}
-
-	repository := model.NewVideoRepository(db)
-	videos, err := repository.FindWithStatus(model.VideoReady, search, skip, limit)
-	if err != nil {
-		writeInternalServerError(w, err, "Failed to get video list")
-		return
-	}
-	items := make([]videoListItem, len(videos))
-	for i, video := range videos {
-		items[i] = toVideoListItem(video)
-	}
-	writeJsonResponse(w, items)
 }
-
 func toVideoListItem(video *model.Video) videoListItem {
 	return videoListItem{
 		video.Uid,

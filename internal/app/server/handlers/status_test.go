@@ -11,14 +11,14 @@ import (
 )
 
 func TestStatus(t *testing.T) {
-	db := initDB()
-	defer db.Close()
+	repo, cleanup := newVideoRepository()
+	defer cleanup()
 	r, err := getStatusRequest("sldjfl34-dfgj-523k-jk34-5jk3j45klj34")
 	if err != nil {
 		t.Fatal(err)
 	}
 	w := httptest.NewRecorder()
-	Router(db).ServeHTTP(w, r)
+	Router(repo).ServeHTTP(w, r)
 	response := w.Result()
 
 	testStatusCode(response.StatusCode, http.StatusOK, t)
@@ -40,14 +40,14 @@ func TestStatus(t *testing.T) {
 }
 
 func TestStatusVideoNotFound(t *testing.T) {
-	db := initDB()
-	defer db.Close()
+	repo, cleanup := newVideoRepository()
+	defer cleanup()
 	r, err := getStatusRequest("non-existent-video")
 	if err != nil {
 		t.Fatal(err)
 	}
 	w := httptest.NewRecorder()
-	Router(db).ServeHTTP(w, r)
+	Router(repo).ServeHTTP(w, r)
 	response := w.Result()
 
 	testStatusCode(response.StatusCode, http.StatusNotFound, t)
