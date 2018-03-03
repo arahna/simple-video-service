@@ -5,13 +5,11 @@ import (
 	log "github.com/sirupsen/logrus"
 	"sync"
 	"time"
-	"github.com/arahna/simple-video-service/internal/pkg/contentserver"
-	"math"
 )
 
 type VideoDaemon struct {
-	Repo         model.VideoRepository
-	VideoService VideoService
+	repo         model.VideoRepository
+	videoService VideoService
 }
 
 type task struct {
@@ -25,10 +23,11 @@ func New(repo model.VideoRepository, service VideoService) *VideoDaemon {
 func (d *VideoDaemon) RunWorkerPool(stopChan chan struct{}) *sync.WaitGroup {
 	var wg sync.WaitGroup
 	taskChan := d.runTaskProvider(stopChan)
+	wp := newWorkerPool(d.videoService, d.repo)
 	for i := 0; i < 3; i++ {
 		go func(i int) {
 			wg.Add(1)
-			d.worker(taskChan, i)
+			wp.worker(taskChan, i)
 			wg.Done()
 		}(i)
 	}
@@ -87,7 +86,7 @@ func (d *VideoDaemon) taskProvider(stopChan chan struct{}) <-chan *task {
 }
 
 func (d *VideoDaemon) generateTask() *task {
-	if video, err := d.Repo.FindOneWithStatus(model.VideoCreated); video != nil && err == nil {
+	if video, err := d.repo.FindOneWithStatus(model.VideoCreated); video != nil && err == nil {
 		if err2 := d.updateStatus(video, model.VideoProcessing, nil); err2 != nil {
 			log.WithFields(log.Fields{"video id": video.Uid,"err": err2}).Error("failed to update status to processing")
 			return nil
@@ -97,62 +96,12 @@ func (d *VideoDaemon) generateTask() *task {
 	return nil
 }
 
-func (d *VideoDaemon) worker(taskChan <-chan *task, name int) {
-	log.Printf("start worker %v\n", name)
-	for task := range taskChan {
-		video := &task.video
-		log.WithFields(log.Fields{"video id": video.Uid, "worker": name}).Info("start processing")
-		if err := d.processTask(task); err != nil {
-			log.WithFields(log.Fields{"video id": video.Uid, "name": name, "err": err}).Error("processing video error")
-		} else {
-			log.WithFields(log.Fields{"video id": video.Uid, "name": name}).Info("processing video success")
-		}
-	}
-}
-
-func (d *VideoDaemon) processTask(t *task) error {
-	video := t.video
-	err := d.updateDuration(&video)
-	err = d.createThumbnail(&video, err)
-	err = d.updateStatus(&video, model.VideoReady, err)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (d *VideoDaemon) updateDuration(video *model.Video) error {
-	duration, err := d.VideoService.Duration(contentserver.GetVideoPath(video.Uid, video.FileName))
-	if err != nil {
-		video.Status = model.VideoError
-		if err2 := d.Repo.Save(video); err2 != nil {
-			return err2
-		}
-		return err
-	}
-	video.Duration = uint(duration)
-	return nil
-}
-
-func (d *VideoDaemon) createThumbnail(video *model.Video, err error) error {
-	if err != nil {
-		return err
-	}
-	videoPath := contentserver.GetVideoPath(video.Uid, video.FileName)
-	thumbPath := contentserver.GetThumbnailPath(video.Uid)
-	err = d.VideoService.CreateVideoThumbnail(videoPath, thumbPath, uint64(math.Min(1.00, float64(video.Duration))))
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 func (d *VideoDaemon) updateStatus(video *model.Video, status model.VideoStatus, err error) error {
 	if err != nil {
 		return err
 	}
 	video.Status = model.VideoReady
-	if err = d.Repo.Save(video); err != nil {
+	if err = d.repo.Save(video); err != nil {
 		return err
 	}
 	return nil
